@@ -1,0 +1,292 @@
+homeassistant:
+  # Name of the location where Home Assistant is running
+  name: Home
+  # Location required to calculate the time the sun rises and sets
+  latitude: !secret location_lat
+  longitude: !secret location_long
+  # Impacts weather/sunrise data (altitude above sea level in meters)
+  elevation: 1
+  # metric for Metric, imperial for Imperial
+  unit_system: imperial
+  # Pick yours from here: http://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+  time_zone: America/New_York
+  
+  #customize:
+  #  - entity_id: group.all_lights
+  #    hidden: true
+
+# Show links to resources in log and frontend
+#introduction:
+
+# Enables the frontend
+frontend:
+
+mqtt:
+  broker: localhost
+
+http:
+  # Uncomment this to add a password (recommended!)
+  api_password: !secret http_password
+  # Uncomment this if you are using SSL or running in Docker etc
+  # base_url: example.duckdns.org:8123
+
+# Checks for available updates
+updater:
+
+# Discover some devices automatically
+discovery:
+
+# Allows you to issue voice commands from the frontend in enabled browsers
+conversation:
+
+# Enables support for tracking state changes over time.
+history:
+
+# View all events in a logbook
+logbook:
+
+# Track the sun
+sun:
+
+notify:
+  - name: pushbullet
+    platform: pushbullet
+    api_key: !secret pushbullet_api_key
+
+ecobee:
+  api_key: !secret ecobee_api_key
+
+automation: 
+  - alias: Smartthings Presence Detection
+    hide_entity: true
+    trigger:
+      platform: mqtt
+      topic: 'smartthings/+/presence'
+    action:
+      - service: mqtt.publish
+        data_template:
+          topic: >
+            location/{{ trigger.topic.split('/')[1] }}
+          payload: >
+            {% if trigger.payload == "present" %}Home{% else %}Not_Home{% endif %}
+
+  - alias: Notify Me When Foyer Motion Detected
+    initial_state: false
+    hide_entity: false
+    trigger:
+      platform: state
+      entity_id: binary_sensor.foyer_motion
+      # Optional 
+      from: 'off'
+      to: 'on'
+    action:
+      service: notify.pushbullet
+      data:
+        message: "Foyer Motion Detected"
+        title: "Foyer Motion Detected"  
+
+alarm_control_panel:
+  - platform: mqtt
+    state_topic: "smartthings/alarm system status/alarmSystemStatus"
+    command_topic: "smartthings/alarm system status/alarmSystemStatus"
+    name: "Smarthings Alarm Control Panel"
+    payload_disarm: "off"
+    payload_arm_home: "stay"
+    payload_arm_away: "away"
+
+binary_sensor:
+  - platform: mqtt
+    state_topic: "smartthings/Foyer Motion Sensor/motion"
+    name: "Foyer Motion"
+    payload_on: "active"
+    payload_off: "inactive"
+    sensor_class: motion
+
+sensor:
+  - platform: mqtt
+    state_topic: "smartthings/Foyer Motion Sensor/temperature"
+    name: "Foyer Temperature"
+    qos: 0
+    unit_of_measurement: "∞F"
+    retain: true
+  - platform: mqtt
+    state_topic: "smartthings/Front Door Sensor/contact"
+    name: Front Door
+    retain: true
+  - platform: mqtt
+    state_topic: "smartthings/Back Door Sensor/contact"
+    name: Back Door
+    retain: true
+  - platform: plex
+    host: 192.168.1.100
+  - platform: sonarr
+    api_key: !secret sonarr_api_key
+    host: 192.168.1.2
+    monitored_conditions:
+      - upcoming
+    days: 7
+  - platform: wunderground
+    api_key: !secret wundergroun_api_key
+  - platform: template
+    sensors:
+      feels_like_temp:
+        value_template: '{{ states.sensor.weather_data.attributes.current_observation.feelslike_f }}'
+        friendly_name: 'Feels Like'
+        unit_of_measurement: '°F'
+        entity_id: 
+          - sensor.weather_data
+
+      relative_humidity:
+        value_template: '{{ states.sensor.weather_data.attributes.current_observation.relative_humidity|replace("%", "") }}'
+        friendly_name: 'Relative Humidity'
+        unit_of_measurement: '%'
+        entity_id: 
+          - sensor.weather_data
+
+      uv:
+        value_template: '{{ states.sensor.weather_data.attributes.current_observation.UV }}'
+        friendly_name: 'UV'
+        entity_id:
+          - sensor.weather_data
+
+      forecast_night:
+        friendly_name: 'Night'
+        value_template: >
+          '{{ states.sensor.weather_data.attributes.forecast.txt_forecast.forecastday[1] .title + 
+          ': ' +states.sensor.weather_data.attributes.forecast.txt_forecast.forecastday[1].fcttext }}'
+        entity_id: 
+          - sensor.weather_data
+
+      forecast_tom_day:
+        friendly_name: 'Forecast Tomorrow'
+        value_template: >
+            '{{ states.sensor.weather_data.attributes.forecast.txt_forecast.forecastday[2] .title + 
+            ': ' +states.sensor.weather_data.attributes.forecast.txt_forecast.forecastday[2].fcttext }}'
+        entity_id: 
+          - sensor.weather_data    
+
+# Text to speech
+tts:
+  platform: google
+
+# Hue Bridge
+light:
+  platform: hue
+  host: 192.168.1.32
+
+# All media players defined here
+media_player:
+  - platform: cast
+    host: 192.168.1.7
+    friendly_name: Google Home (Kitchen)
+  - platform: cast
+    host: 192.168.1.5
+  - platform: cast
+    host: 192.168.1.4
+  - platform: cast
+    host: 192.168.1.6   
+
+device_tracker:
+  - platform: mqtt
+    track_new_devices: yes
+    devices:
+      Chris: location/Chris
+      Sandy: location/Sandy
+
+camera:
+  - platform: generic
+    still_image_url: https://radblast.wunderground.com/cgi-bin/radar/WUNIDS_map?station=AMX&brand=wui&num=1&delay=15&type=N0R&frame=0&scale=1.000&noclutter=0&showstorms=0&mapx=400&mapy=240&centerx=400&centery=240&transx=0&transy=0&showlabels=1&severe=0&rainsnow=0&lightning=0&smooth=0&rand=24749476&lat=0&lon=0&label=you
+    name: RadarFL
+
+group:
+  #default_view:
+  #view: yes
+  #entities:
+   #  - group.kitchen
+
+  presence:
+    name: Presence
+    entities:
+      - device_tracker.Chris
+      - device_tracker.Sandy
+  Weather:
+    name: Weather
+    icon: mdi:umbrella
+    entities:
+      - sensor.condition 
+      - sensor.feels_like_temp
+      - sensor.temp
+      - sensor.relative_humidity
+      - sensor.uv
+      - sensor.forecast_night
+      - sensor.forecast_tom_day
+  Sonarr:
+    name: Sonarr
+    entities:
+      - sensor.sonarr_upcoming
+  lights:
+    name: Lights
+    view: yes
+    icon: mdi:lightbulb-outline
+    entities: 
+    - group.hue_lights
+  Hue Lights:
+    - light.office
+    - light.zoeys_room
+    - light.liams_room
+  Thermostat:
+    - climate.thermostat  
+  Alarm Status:
+    - alarm_control_panel.smarthings_alarm_control_panel
+  Media Players:
+    view: no
+    name: Media Players
+    entities: 
+    - media_player.master
+    - media_player.family_room
+    - media_player.kitchen_home
+    - sensor.plex
+  Master:
+    name: Master
+    view: yes
+    entities:
+    - media_player.master
+    - media_player.MIBOX3
+  Kitchen:
+    name: Kitchen
+    view: yes
+    entities:
+    - media_player.kitchen_home
+  Foyer: 
+    name: Foyer
+    view: no
+    entities: 
+    - binary_sensor.foyer_motion
+    - sensor.foyer_temperature
+    - sensor.front_door
+  Entrances:
+    name: Entrances
+    entities:
+    - sensor.front_door
+    - sensor.back_door
+  office:
+    name: Office
+    view: yes
+    entities:
+    - light.office
+  Living Room:
+    name: Living Room
+    view: yes
+    entities:
+    - media_player.family_room
+  Kids:
+    name: Kids
+    view: yes
+    entities: 
+    - light.zoeys_room
+  Living Area:
+    view: yes
+    name: Living Area
+    entities:
+    - group.kitchen
+    - group.living_room
