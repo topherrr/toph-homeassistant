@@ -113,8 +113,8 @@ sensor:
     unit_of_measurement: '%'
   - platform: mqtt
     state_topic: "smartthings/Back Door Sensor/battery"
-    unit_of_measurement: '%'
     name: Back Door Sensor Battery      
+    unit_of_measurement: '%'
   - platform: mqtt
     state_topic: "smartthings/Garage Inside Door/battery"
     name: Garage Inside Door Sensor Battery      
@@ -219,6 +219,11 @@ camera:
   - platform: generic
     still_image_url: https://radblast.wunderground.com/cgi-bin/radar/WUNIDS_map?station=AMX&brand=wui&num=1&delay=15&type=N0R&frame=0&scale=1.000&noclutter=0&showstorms=0&mapx=400&mapy=240&centerx=400&centery=240&transx=0&transy=0&showlabels=1&severe=0&rainsnow=0&lightning=0&smooth=0&rand=24749476&lat=0&lon=0&label=you
     name: RadarFL
+  - platform: mjpeg
+    mjpeg_url: http://192.168.1.25/mjpg/video.cgi
+    name: Garage Camera
+    username: admin
+    password: !secret dlinkcamerapassword
 
 # Group configuration
 group:
